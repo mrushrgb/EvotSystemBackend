@@ -121,7 +121,7 @@ exports.stats = async (req, res) => {
   try {
     const now = new Date();
     const totalElections = await Election.countDocuments();
-    const activeElections = await Election.countDocuments({ startsAt: { $lte: now }, endsAt: { $gte: now } });
+    const activeElections = await Election.countDocuments({ status: 'active' });
     const elections = await Election.find();
 
     // total votes across all elections
@@ -137,6 +137,57 @@ exports.stats = async (req, res) => {
     res.json({ totalElections, activeElections, totalVoters, totalVotes, pendingDisputes, systemAlerts });
   } catch (err) {
     console.error('admin stats error', err);
+    res.status(500).send('Server error');
+  }
+};
+
+// GET /api/admin/turnout/:electionId - get real-time turnout data for an election
+exports.getTurnout = async (req, res) => {
+  try {
+    const election = await Election.findById(req.params.electionId);
+    if (!election) return res.status(404).json({ msg: 'Election not found' });
+
+    const totalVoters = await User.countDocuments();
+    const votedCount = election.votes ? election.votes.length : 0;
+    const percentage = totalVoters > 0 ? ((votedCount / totalVoters) * 100).toFixed(1) : 0;
+
+    // Calculate votes per candidate
+    const candidateVotes = {};
+    election.candidates.forEach(c => {
+      candidateVotes[c._id.toString()] = 0;
+    });
+    
+    if (election.votes) {
+      election.votes.forEach(v => {
+        const cId = v.candidateId?.toString();
+        if (cId && candidateVotes.hasOwnProperty(cId)) {
+          candidateVotes[cId]++;
+        }
+      });
+    }
+
+    const candidateResults = election.candidates.map(c => ({
+      id: c._id,
+      name: c.name,
+      party: c.party,
+      votes: candidateVotes[c._id.toString()] || 0,
+      percentage: votedCount > 0 ? ((candidateVotes[c._id.toString()] || 0) / votedCount * 100).toFixed(1) : 0
+    }));
+
+    res.json({
+      electionId: election._id,
+      title: election.title,
+      status: election.status,
+      overall: {
+        totalVoters,
+        votedCount,
+        percentage: parseFloat(percentage)
+      },
+      candidates: candidateResults,
+      lastUpdated: new Date()
+    });
+  } catch (err) {
+    console.error('turnout error', err);
     res.status(500).send('Server error');
   }
 };
