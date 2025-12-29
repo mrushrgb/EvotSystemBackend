@@ -227,3 +227,50 @@ exports.getTurnout = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
+
+// DELETE /api/admin/elections/:electionId/votes/:userId - Remove a user's vote (for testing)
+exports.removeUserVote = async (req, res) => {
+  try {
+    const { electionId, userId } = req.params;
+    const election = await Election.findById(electionId);
+    
+    if (!election) {
+      return res.status(404).json({ msg: 'Election not found' });
+    }
+
+    // Remove user's vote from the election
+    const beforeCount = election.votes.length;
+    election.votes = election.votes.filter(v => v.userId?.toString() !== userId);
+    await election.save();
+
+    res.json({ 
+      msg: 'Vote removed successfully', 
+      removedVotes: beforeCount - election.votes.length,
+      remainingVotes: election.votes.length 
+    });
+  } catch (err) {
+    console.error('remove vote error', err);
+    res.status(500).send('Server error');
+  }
+};
+
+// DELETE /api/admin/elections/:electionId/clear-votes - Clear all votes from election (for testing)
+exports.clearAllVotes = async (req, res) => {
+  try {
+    const { electionId } = req.params;
+    const election = await Election.findById(electionId);
+    
+    if (!election) {
+      return res.status(404).json({ msg: 'Election not found' });
+    }
+
+    const previousCount = election.votes.length;
+    election.votes = [];
+    await election.save();
+
+    res.json({ msg: 'All votes cleared successfully', previousCount, currentCount: 0 });
+  } catch (err) {
+    console.error('clear votes error', err);
+    res.status(500).send('Server error');
+  }
+};
