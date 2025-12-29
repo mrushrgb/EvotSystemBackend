@@ -4,10 +4,10 @@ const User = require('../models/User');
 exports.getElections = async (req, res) => {
   try {
     const { active } = req.query;
-    const now = new Date();
     let q = {};
     if (active === 'true') {
-      q = { startsAt: { $lte: now }, endsAt: { $gte: now } };
+      // Only show elections with status 'active'
+      q = { status: 'active' };
     }
     const elections = await Election.find(q);
     res.json(elections);
@@ -33,6 +33,11 @@ exports.vote = async (req, res) => {
     const { electionId, candidateId } = req.body;
     const election = await Election.findById(electionId);
     if (!election) return res.status(404).json({ msg: 'Election not found' });
+
+    // Check if election is active
+    if (election.status !== 'active') {
+      return res.status(400).json({ msg: 'This election is not currently active for voting' });
+    }
 
     // prevent double voting by same user
     const already = election.votes.find(v => v.userId?.toString() === req.user.id);

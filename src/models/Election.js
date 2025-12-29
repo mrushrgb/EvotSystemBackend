@@ -10,6 +10,7 @@ const ElectionSchema = new mongoose.Schema({
   description: String,
   startsAt: Date,
   endsAt: Date,
+  status: { type: String, enum: ['draft', 'scheduled', 'active', 'completed', 'cancelled'], default: 'draft' },
   candidates: [CandidateSchema],
   votes: [{ candidateId: mongoose.Schema.Types.ObjectId, userId: mongoose.Schema.Types.ObjectId }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
