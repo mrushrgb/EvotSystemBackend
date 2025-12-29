@@ -43,7 +43,11 @@ exports.vote = async (req, res) => {
     const already = election.votes.find(v => v.userId?.toString() === req.user.id);
     if (already) return res.status(400).json({ msg: 'User already voted' });
 
-    election.votes.push({ candidateId, userId: req.user.id });
+    // Get user's district
+    const user = await User.findById(req.user.id);
+    const district = user?.district || 'Unknown';
+
+    election.votes.push({ candidateId, userId: req.user.id, district });
     await election.save();
     res.json({ msg: 'Vote recorded' });
   } catch (err) {

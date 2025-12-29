@@ -13,6 +13,7 @@ const UserSchema = new mongoose.Schema({
   isEligible: { type: Boolean, default: false },
   hasVoted: { type: Boolean, default: false },
   constituency: { type: String },
+  district: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
 

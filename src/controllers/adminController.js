@@ -174,6 +174,41 @@ exports.getTurnout = async (req, res) => {
       percentage: votedCount > 0 ? ((candidateVotes[c._id.toString()] || 0) / votedCount * 100).toFixed(1) : 0
     }));
 
+    // Calculate district distribution
+    const districtVotes = {};
+    if (election.votes) {
+      election.votes.forEach(v => {
+        const district = v.district || 'Unknown';
+        if (!districtVotes[district]) {
+          districtVotes[district] = { district, votes: 0, candidates: {} };
+        }
+        districtVotes[district].votes++;
+        
+        const cId = v.candidateId?.toString();
+        if (cId) {
+          if (!districtVotes[district].candidates[cId]) {
+            districtVotes[district].candidates[cId] = 0;
+          }
+          districtVotes[district].candidates[cId]++;
+        }
+      });
+    }
+
+    // Format district distribution with candidate breakdown
+    const districtDistribution = Object.values(districtVotes).map(d => {
+      const candidateBreakdown = election.candidates.map(c => ({
+        name: c.name,
+        party: c.party,
+        votes: d.candidates[c._id.toString()] || 0
+      }));
+      return {
+        district: d.district,
+        totalVotes: d.votes,
+        percentage: votedCount > 0 ? ((d.votes / votedCount) * 100).toFixed(1) : 0,
+        candidates: candidateBreakdown
+      };
+    }).sort((a, b) => b.totalVotes - a.totalVotes);
+
     res.json({
       electionId: election._id,
       title: election.title,
@@ -184,6 +219,7 @@ exports.getTurnout = async (req, res) => {
         percentage: parseFloat(percentage)
       },
       candidates: candidateResults,
+      districtDistribution,
       lastUpdated: new Date()
     });
   } catch (err) {
